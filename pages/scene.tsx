@@ -1,15 +1,8 @@
-import { OrbitControls } from '@react-three/drei'
-import { useLoader } from '@react-three/fiber'
+import { OrbitControls, useGLTF } from '@react-three/drei'
 import { Canvas } from '@react-three/fiber'
 import { RepeatWrapping, TextureLoader } from 'three'
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader'
-
-const MeetingRoom = () => {
-  const gltf = useLoader(GLTFLoader, './models/scene1.glb')
-  return (
-    <primitive object={gltf.scene} />
-  )
-}
+import Avatar from '@/components/common/Avatar'
+import MeetingRoom from '@/components/common/MeetingRoom'
 
 const Scene = () => {
 
@@ -30,7 +23,7 @@ const Scene = () => {
           <planeBufferGeometry args={[50, 50]} />
           <meshStandardMaterial map={ texture } />
         </mesh>
-
+        <Avatar />
       </Canvas>
     </div>
   );
