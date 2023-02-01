@@ -1,10 +1,14 @@
 import Link from 'next/link'
 import Header from "../components/common/Header";
 import Footer from '../components/common/Footer';
+import Head from 'next/head';
 
 export default function Home() {
   return (
     <>
+      <Head>
+        <title>Metaverse</title>
+      </Head>
       <Header />
       <main>
         <div className="hero flex flex-col m-4 rounded-xl items-center">

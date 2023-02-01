@@ -3,9 +3,13 @@
 @tailwind utilities;
 
 .container {
-    width: 100%;
+    width: 80%;
     height: 100vh;
     background-color: beige;
+}
+
+.client-container{
+    width: 20%;
 }
 
 .hero {

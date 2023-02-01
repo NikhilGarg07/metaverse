@@ -1,5 +1,5 @@
 {
-  "name": "sony-metaverse",
+  "name": "metaverse",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -23,9 +23,11 @@
     "eslint": "8.32.0",
     "eslint-config-next": "13.1.3",
     "next": "13.1.3",
+    "peerjs": "^1.4.7",
     "react": "18.2.0",
     "react-dom": "18.2.0",
     "react-fontawesome": "^1.7.1",
+    "simple-peer": "^9.11.1",
     "socket.io": "^4.5.4",
     "socket.io-client": "^4.5.4",
     "three": "^0.149.0",
