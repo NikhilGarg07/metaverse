@@ -1,7 +1,6 @@
 import { useInput } from "@/hooks/userInput";
 import { OrbitControls, useAnimations, useGLTF } from "@react-three/drei";
 import { useFrame, useThree } from "@react-three/fiber";
-import { useRouter } from "next/router";
 import { useEffect, useRef, useState } from "react";
 import { io } from 'socket.io-client'
 import * as THREE from 'three'
@@ -45,25 +44,9 @@ function modelInRange(x: number, z: number) {
 }
 
 const Avatar = () => {
-    const router = useRouter();
-
-    const { id: roomId } = router.query;
+    
     const { forward, backward, left, right, jump, shift } = useInput();
     const [sit, setsit] = useState(false)
-
-    useEffect(() => {
-        const socket = io('http://localhost:8000')
-
-        socket.on('connect', () => {
-            console.log(`You connected with ID: ${socket.id}`);
-        })
-
-        socket.emit('join-room', roomId, Math.random().toString(36).slice(4));
-
-        socket.on('user-connected', userId => {
-            console.log('User Connected', userId);
-        })
-    }, [roomId]);
 
     const model = useGLTF('../models/employee.glb')
     // console.log(model);
