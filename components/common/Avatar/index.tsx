@@ -2,7 +2,6 @@ import { useInput } from "@/hooks/userInput";
 import { OrbitControls, useAnimations, useGLTF } from "@react-three/drei";
 import { useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useRef, useState } from "react";
-import { io } from 'socket.io-client'
 import * as THREE from 'three'
 
 let walkDirection = new THREE.Vector3();
@@ -43,12 +42,13 @@ function modelInRange(x: number, z: number) {
     return false;
 }
 
-const Avatar = () => {
+const Avatar = (props) => {
     
     const { forward, backward, left, right, jump, shift } = useInput();
     const [sit, setsit] = useState(false)
-
-    const model = useGLTF('../models/employee.glb')
+    console.log({props});
+    
+    const model = useGLTF(`../models/${props.avatar}.glb`)
     // console.log(model);
     const { actions } = useAnimations(model.animations, model.scene);
 
