@@ -1,10 +1,11 @@
 import { OrbitControls } from '@react-three/drei'
+import dynamic from "next/dynamic"
 import { Canvas } from '@react-three/fiber'
 import { RepeatWrapping, TextureLoader } from 'three'
-import Avatar from '@/components/common/Avatar'
-import MeetingRoom from '@/components/common/MeetingRoom'
+const Avatar = dynamic(() => import("@/components/common/Avatar"))
+const MeetingRoom = dynamic(() => import("@/components/common/MeetingRoom"))
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faPhone } from '@fortawesome/free-solid-svg-icons'
+import { faMicrophone, faMicrophoneSlash, faPhone } from '@fortawesome/free-solid-svg-icons'
 import Peer from "simple-peer"
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/router'
@@ -26,28 +27,30 @@ const Scene = () => {
     const [idToCall, setIdToCall] = useState('')
     const [users, setUsers] = useState([])
     const [name, setName] = useState('')
+    const [muteMic, setMuteMic] = useState(false)
+    const [hideVideo, setHideVideo] = useState(false)
     const myVideo = useRef()
     const userVideo = useRef()
     const connectionRef = useRef()
     const socketRef = useRef()
-    
+
     useEffect(() => {
-        
+
         socketRef.current = io('http://localhost:8000')
-        
+
         navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then((stream) => {
             setStream(stream)
             myVideo.current && (myVideo.current.srcObject = stream);
         })
-        
+
         console.log(socketRef.current.id);
-        
-        
+
+
         socketRef.current.on("me", (id) => {
             setMe(id);
-            
+
         })
-        
+
         socketRef.current.on("callUser", (data) => {
             setReceivingCall(true)
             setCaller(data.from)
@@ -56,16 +59,46 @@ const Scene = () => {
             console.log('Socket CallUser', { data });
         })
     }, [])
-    
+
+    const handleVideo = () => {
+        if (myVideo.current) {
+            var videoTrack = myVideo.current.srcObject.getTracks().find(track => track.kind === 'video');
+        }
+
+        if (videoTrack.enabled) {
+            videoTrack.enabled = false
+            setHideVideo(true)
+
+        } else {
+            videoTrack.enabled = true;
+            setHideVideo(false)
+        }
+    }
+
+    const handleMic = () => {
+        if (myVideo.current) {
+            var audioTrack = myVideo.current.srcObject.getTracks().find(track => track.kind === 'audio');
+        }
+
+        if (audioTrack.enabled) {
+            audioTrack.enabled = false
+            setMuteMic(true)
+
+        } else {
+            audioTrack.enabled = true;
+            setMuteMic(false)
+        }
+    }
+
     const callUser = (id) => {
         console.log('call User Started');
-        
+
         const peer = new Peer({
             initiator: true,
             trickle: false,
             stream: stream
         })
-        
+
         peer.on('signal', (data) => {
             socketRef.current.emit("callUser", {
                 userToCall: id,
@@ -75,23 +108,23 @@ const Scene = () => {
             })
         })
         peer.on("stream", (stream) => {
-            console.log({userVideo}); 
+            console.log({ userVideo });
             userVideo.current.srcObject = stream
-            console.log({userVideo});
+            console.log({ userVideo });
         })
         socketRef.current.on("callAccepted", (signal) => {
             setCallAccepted(true)
             peer.signal(signal)
         })
-        
+
         connectionRef.current = peer;
         console.log('call User Ended');
         console.log({ callAccepted, callEnded, receivingCall });
     }
-    
+
     const answerCall = () => {
         console.log('Answer Call Started');
-        
+
         setCallAccepted(true)
         const peer = new Peer({
             initiator: false,
@@ -102,27 +135,27 @@ const Scene = () => {
             socketRef.current.emit("answerCall", { signal: data, to: caller })
         })
         peer.on("stream", (stream) => {
-            console.log({userVideo});
+            console.log({ userVideo });
             userVideo.current.srcObject = stream
-            console.log({userVideo});
+            console.log({ userVideo });
         })
-        
+
         peer.signal(callerSignal)
         connectionRef.current = peer;
-        
+
         console.log('Answer Call Ended');
-        
+
     }
-    
+
     const leaveCall = () => {
         setCallEnded(true)
         console.log('In Leave Call');
-        
+
         connectionRef.current.destroy()
     }
 
     console.log(avatar);
-    
+
     return (
         <>
             <div className="flex flex-row">
@@ -138,7 +171,7 @@ const Scene = () => {
                             <planeBufferGeometry args={[50, 50]} />
                             <meshStandardMaterial map={texture} />
                         </mesh>
-                        <Avatar avatar={'man'} />
+                        <Avatar avatar={avatar} />
                     </Canvas>
                 </div>
                 <div className=" client-container flex-col">
@@ -153,7 +186,14 @@ const Scene = () => {
                             null}
                     </div>
                     <h5>{me}</h5>
-                    <input type="text" onChange={(e) =>setName(e.target.value)} value={name} placeholder="Name" />
+
+                    <button onClick={handleMic}>
+                        <FontAwesomeIcon icon={muteMic ? faMicrophoneSlash : faMicrophone}/>
+                    </button>
+                    <button onClick={handleVideo}>
+                        {hideVideo ? 'show video' : 'hide video'}
+                    </button>
+                    <input type="text" onChange={(e) => setName(e.target.value)} value={name} placeholder="Name" />
                     <input type="text" onChange={(e) => setIdToCall(e.target.value)} placeholder="Id" />
                     {callAccepted && !callEnded ? (
                         <button variant="contained" color="secondary" onClick={leaveCall}>
@@ -164,7 +204,7 @@ const Scene = () => {
                             <FontAwesomeIcon icon={faPhone} />
                         </button>
                     )}
-                    
+
                     <div>
                         {receivingCall && !callAccepted ? (
                             <div className="caller">
