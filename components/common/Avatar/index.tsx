@@ -46,10 +46,8 @@ const Avatar = (props) => {
     
     const { forward, backward, left, right, jump, shift } = useInput();
     const [sit, setsit] = useState(false)
-    // console.log({props});
     
     const model = useGLTF(`../models/${props.avatar}.glb`)
-    // console.log(model);
     const { actions } = useAnimations(model.animations, model.scene);
 
     model.scene.scale.set(1.8, 1.8,1.8)
@@ -123,8 +121,6 @@ const Avatar = (props) => {
             model.scene.position.z += moveZ;
             updateCameraTarget(moveX, moveZ);
         }
-
-        props.getUserPosition(model.scene.position);
     })
 
     return (

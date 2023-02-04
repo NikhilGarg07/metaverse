@@ -48,9 +48,6 @@ const Scene = () => {
             myVideo.current && (myVideo.current.srcObject = stream);
         })
 
-        console.log(socketRef.current.id);
-
-
         socketRef.current.on("me", (id) => {
             setMe(id);
             socketRef.current.emit('join', {})
@@ -63,20 +60,6 @@ const Scene = () => {
             setCallerSignal(data.signal)
         })
     }, [])
-
-    const getUserPosition = (position: THREE.Vector3) => {
-        setPosition(position)
-        // console.log(position);
-
-    }
-
-    const Person = (position: Vector3, avatar: string) => {
-        const model = useGLTF(`../models/${avatar}.glb`)
-        position && model.scene.position.set(position.x, position.y, position.z);
-        return (
-            <primitive object={model.scene} />
-        )
-    }
 
     const handleVideo = () => {
         if (myVideo.current) {
@@ -109,8 +92,6 @@ const Scene = () => {
     }
 
     const callUser = (id) => {
-        console.log('call User Started');
-
         const peer = new Peer({
             initiator: true,
             trickle: false,
@@ -128,9 +109,7 @@ const Scene = () => {
             socketRef.current.emit('sendAvatarData', { position: position, avatar: avatar })
         })
         peer.on("stream", (stream) => {
-            // console.log({ userVideo });
             userVideo.current.srcObject = stream
-            // console.log({ userVideo });
         })
         socketRef.current.on("callAccepted", (data) => {
             setCallAccepted(true)
@@ -138,13 +117,9 @@ const Scene = () => {
         })
 
         connectionRef.current = peer;
-        console.log('call User Ended');
-        console.log({ callAccepted, callEnded, receivingCall });
     }
 
     const answerCall = () => {
-        console.log('Answer Call Started');
-
         setCallAccepted(true)
         const peer = new Peer({
             initiator: false,
@@ -152,37 +127,22 @@ const Scene = () => {
             stream: stream
         })
 
-        socketRef.current.on('getAvatarData', data => {
-            setUserPosition(data.position);
-            console.log(data.position);
-            
-            setUserAvatar(data.avatar);
-        })
-
         peer.on("signal", (data) => {
             socketRef.current.emit("answerCall", { signal: data, to: caller })
         })
         peer.on("stream", (stream) => {
-            // console.log({ userVideo });
             userVideo.current.srcObject = stream
-            // console.log({ userVideo });
         })
 
         peer.signal(callerSignal)
         connectionRef.current = peer;
-
-        console.log('Answer Call Ended');
-
     }
 
     const leaveCall = () => {
         setCallEnded(true)
-        console.log('In Leave Call');
-
         connectionRef.current.destroy()
     }
 
-    console.log({ userPosition })
     return (
         <>
             <div className="flex flex-row">
@@ -198,8 +158,7 @@ const Scene = () => {
                             <planeBufferGeometry args={[50, 50]} />
                             <meshStandardMaterial map={texture} />
                         </mesh>
-                        <Avatar avatar={avatar} getUserPosition={getUserPosition} />
-                        {callAccepted && !callEnded && userAvatar && userPosition && Person(userPosition,userAvatar)}
+                        <Avatar avatar={avatar} />
                     </Canvas>
                 </div>
                 <div className="client-container">
@@ -226,14 +185,14 @@ const Scene = () => {
 
                     <div className="flex flex-col">
                         {stream && <div className='flex-1 border-2 border-solid border-sky-600 rounded m-3 relative mb-4'>
-                            <video muted playsInline autoPlay ref={myVideo}></video>
+                            <video playsInline autoPlay ref={myVideo}></video>
                         </div>}
                         <div className='flex bg-amber-50 w-full p-2'>
                             <button className='flex-1' onClick={handleMic}>
                                 <FontAwesomeIcon icon={muteMic ? faMicrophoneSlash : faMicrophone} size='xl' />
                             </button>
                             <button className='flex-1' onClick={handleVideo}>
-                                <FontAwesomeIcon icon={hideVideo ? faVideo : faVideoSlash} size='xl' />
+                                <FontAwesomeIcon icon={hideVideo ? faVideoSlash : faVideo} size='xl' />
                             </button>
                         </div>
                         <div>
@@ -247,7 +206,7 @@ const Scene = () => {
                             ) : null}
                         </div>
                         {callAccepted && !callEnded && <div className='flex-1 border-2 border-solid border-sky-600 rounded m-3 relative'>
-                            <video muted playsInline autoPlay ref={userVideo}></video>
+                            <video playsInline autoPlay ref={userVideo}></video>
                         </div>}
                     </div>
                 </div>
