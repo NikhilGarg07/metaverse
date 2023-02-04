@@ -1,14 +1,15 @@
 import Footer from "@/components/common/Footer";
 import Header from "@/components/common/Header";
+import { useState } from 'react'
 import { useRouter } from "next/router";
 
 const ChooseAvatar = () => {
-
+    const [name, setName] = useState('')
     const router = useRouter()
-    const handleClick = (avatar)=>{
+    const handleClick = (avatar: string)=>{
       router.push({
         pathname: '/scene',
-        query: {avatar}
+        query: {avatar,name}
       })
     }
 
@@ -44,6 +45,9 @@ const ChooseAvatar = () => {
                             </div>
                         </div>
                     </div>
+                </div>
+                <div>
+                    <input type="text" name="name" id="name" value={name} onChange={(e)=> setName(e.target.value)} placeholder="Enter your name here" />
                 </div>
             </div>
             <Footer />

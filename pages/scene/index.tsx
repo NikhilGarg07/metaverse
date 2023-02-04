@@ -1,15 +1,16 @@
-import { OrbitControls } from '@react-three/drei'
+import { OrbitControls, useGLTF } from '@react-three/drei'
 import dynamic from "next/dynamic"
-import { Canvas } from '@react-three/fiber'
-import { RepeatWrapping, TextureLoader } from 'three'
+import { Canvas, ObjectMap } from '@react-three/fiber'
+import { RepeatWrapping, TextureLoader, Vector3 } from 'three'
 const Avatar = dynamic(() => import("@/components/common/Avatar"))
 const MeetingRoom = dynamic(() => import("@/components/common/MeetingRoom"))
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faMicrophone, faMicrophoneSlash, faPhone } from '@fortawesome/free-solid-svg-icons'
+import { faCopy, faMicrophone, faMicrophoneSlash, faPhone, faVideo, faVideoSlash } from '@fortawesome/free-solid-svg-icons'
 import Peer from "simple-peer"
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/router'
 import io from 'socket.io-client'
+import {CopyToClipboard} from 'react-copy-to-clipboard';
 
 const Scene = () => {
     const texture = typeof window !== 'undefined' ? new TextureLoader().load('../images/checked_grass.jpg') : null;
@@ -17,6 +18,7 @@ const Scene = () => {
     texture && (texture.wrapT = RepeatWrapping);
     const router = useRouter();
     const { avatar: avatar } = router.query;
+    const { name: myname } = router.query;
     const [me, setMe] = useState("")
     const [stream, setStream] = useState()
     const [receivingCall, setReceivingCall] = useState(false)
@@ -25,10 +27,13 @@ const Scene = () => {
     const [callAccepted, setCallAccepted] = useState(false)
     const [callEnded, setCallEnded] = useState(false)
     const [idToCall, setIdToCall] = useState('')
-    const [users, setUsers] = useState([])
-    const [name, setName] = useState('')
+    const [position, setPosition] = useState<THREE.Vector3>()
+    const [userPosition, setUserPosition] = useState<THREE.Vector3>()
+    const [userAvatar, setUserAvatar] = useState('')
+    const [name, setName] = useState(myname)
     const [muteMic, setMuteMic] = useState(false)
     const [hideVideo, setHideVideo] = useState(false)
+    const [copy, setCopy] = useState(false)
     const myVideo = useRef()
     const userVideo = useRef()
     const connectionRef = useRef()
@@ -48,7 +53,7 @@ const Scene = () => {
 
         socketRef.current.on("me", (id) => {
             setMe(id);
-
+            socketRef.current.emit('join', {})
         })
 
         socketRef.current.on("callUser", (data) => {
@@ -56,9 +61,22 @@ const Scene = () => {
             setCaller(data.from)
             setName(data.name)
             setCallerSignal(data.signal)
-            console.log('Socket CallUser', { data });
         })
     }, [])
+
+    const getUserPosition = (position: THREE.Vector3) => {
+        setPosition(position)
+        // console.log(position);
+
+    }
+
+    const Person = (position: Vector3, avatar: string) => {
+        const model = useGLTF(`../models/${avatar}.glb`)
+        position && model.scene.position.set(position.x, position.y, position.z);
+        return (
+            <primitive object={model.scene} />
+        )
+    }
 
     const handleVideo = () => {
         if (myVideo.current) {
@@ -100,21 +118,23 @@ const Scene = () => {
         })
 
         peer.on('signal', (data) => {
+
             socketRef.current.emit("callUser", {
                 userToCall: id,
                 signalData: data,
                 from: me,
-                name: name
+                name: name,
             })
+            socketRef.current.emit('sendAvatarData', { position: position, avatar: avatar })
         })
         peer.on("stream", (stream) => {
-            console.log({ userVideo });
+            // console.log({ userVideo });
             userVideo.current.srcObject = stream
-            console.log({ userVideo });
+            // console.log({ userVideo });
         })
-        socketRef.current.on("callAccepted", (signal) => {
+        socketRef.current.on("callAccepted", (data) => {
             setCallAccepted(true)
-            peer.signal(signal)
+            peer.signal(data.signal)
         })
 
         connectionRef.current = peer;
@@ -131,13 +151,21 @@ const Scene = () => {
             trickle: false,
             stream: stream
         })
+
+        socketRef.current.on('getAvatarData', data => {
+            setUserPosition(data.position);
+            console.log(data.position);
+            
+            setUserAvatar(data.avatar);
+        })
+
         peer.on("signal", (data) => {
             socketRef.current.emit("answerCall", { signal: data, to: caller })
         })
         peer.on("stream", (stream) => {
-            console.log({ userVideo });
+            // console.log({ userVideo });
             userVideo.current.srcObject = stream
-            console.log({ userVideo });
+            // console.log({ userVideo });
         })
 
         peer.signal(callerSignal)
@@ -154,8 +182,7 @@ const Scene = () => {
         connectionRef.current.destroy()
     }
 
-    console.log(avatar);
-
+    console.log({ userPosition })
     return (
         <>
             <div className="flex flex-row">
@@ -171,52 +198,59 @@ const Scene = () => {
                             <planeBufferGeometry args={[50, 50]} />
                             <meshStandardMaterial map={texture} />
                         </mesh>
-                        <Avatar avatar={avatar} />
+                        <Avatar avatar={avatar} getUserPosition={getUserPosition} />
+                        {callAccepted && !callEnded && userAvatar && userPosition && Person(userPosition,userAvatar)}
                     </Canvas>
                 </div>
-                <div className=" client-container flex-col">
-                    <div className='h-1/4 flex-1 border-2 border-solid border-sky-600 rounded m-3 relative mb-4'>
-                        {stream && <video muted width='100%' playsInline autoPlay ref={myVideo}></video>}
-                        {/* <div className='absolute w-8/12 bg-slate-300 h-2/3'> */}
-                        {/* <FontAwesomeIcon icon={faMicrophone} width='100%' height='200px' /> */}
-                    </div>
-                    <div className='h-1/4 flex-1 border-2 border-solid border-sky-600 rounded m-3 relative'>
-                        {callAccepted && !callEnded ?
-                            <video playsInline autoPlay ref={userVideo}></video> :
-                            null}
-                    </div>
-                    <h5>{me}</h5>
+                <div className="client-container">
+                    <div className='m-3'>
+                        <span>{name}</span>
+                        <CopyToClipboard onCopy={()=> setCopy(true)} text={me}>
+                            <FontAwesomeIcon className='px-2' icon={faCopy}/>
+                        </CopyToClipboard>
+                        {copy && <span>Copied!</span>}
+                        <div className='my-2'>
+                            <input type="text" onChange={(e) => setIdToCall(e.target.value)} placeholder="Id" />
 
-                    <button onClick={handleMic}>
-                        <FontAwesomeIcon icon={muteMic ? faMicrophoneSlash : faMicrophone}/>
-                    </button>
-                    <button onClick={handleVideo}>
-                        {hideVideo ? 'show video' : 'hide video'}
-                    </button>
-                    <input type="text" onChange={(e) => setName(e.target.value)} value={name} placeholder="Name" />
-                    <input type="text" onChange={(e) => setIdToCall(e.target.value)} placeholder="Id" />
-                    {callAccepted && !callEnded ? (
-                        <button variant="contained" color="secondary" onClick={leaveCall}>
-                            End Call
-                        </button>
-                    ) : (
-                        <button color="primary" aria-label="call" onClick={() => callUser(idToCall)}>
-                            <FontAwesomeIcon icon={faPhone} />
-                        </button>
-                    )}
+                        </div>
+                        {callAccepted && !callEnded ? (
+                            <button className='bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-full' onClick={leaveCall}>
+                                End Call
+                            </button>
+                        ) : (
+                            <button className='bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-full' aria-label="call" onClick={() => callUser(idToCall)}>
+                                Call <FontAwesomeIcon icon={faPhone} />
+                            </button>
+                        )}
+                    </div>
 
-                    <div>
-                        {receivingCall && !callAccepted ? (
-                            <div className="caller">
-                                <h1 >{name} is calling...</h1>
-                                <button color="primary" onClick={answerCall}>
-                                    Answer
+                    <div className="flex flex-col">
+                        {stream && <div className='flex-1 border-2 border-solid border-sky-600 rounded m-3 relative mb-4'>
+                            <video muted playsInline autoPlay ref={myVideo}></video>
+                        </div>}
+                        <div className='flex bg-amber-50 w-full p-2'>
+                            <button className='flex-1' onClick={handleMic}>
+                                <FontAwesomeIcon icon={muteMic ? faMicrophoneSlash : faMicrophone} size='xl' />
+                            </button>
+                            <button className='flex-1' onClick={handleVideo}>
+                                <FontAwesomeIcon icon={hideVideo ? faVideo : faVideoSlash} size='xl' />
+                            </button>
+                        </div>
+                        <div>
+                            {receivingCall && !callAccepted ? (
+                                <div>
+                                    <h1 >{name} is calling...</h1>
+                                    <button color="primary" onClick={answerCall}>
+                                        Answer
 						        </button>
-                            </div>
-                        ) : null}
+                                </div>
+                            ) : null}
+                        </div>
+                        {callAccepted && !callEnded && <div className='flex-1 border-2 border-solid border-sky-600 rounded m-3 relative'>
+                            <video muted playsInline autoPlay ref={userVideo}></video>
+                        </div>}
                     </div>
                 </div>
-
             </div>
         </>
     );
