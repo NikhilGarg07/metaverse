@@ -36,26 +36,24 @@ const directionOffset = ({ forward, backward, left, right }) => {
 }
 
 function modelInRange(x: number, z: number) {
-    if(x>3 && x<4 && z<-3 && z>-4){
+    if ((x > 3 && x < 4 && z < -3 && z > -4) || (x>1 && x<2 && (z<-4.5 && z>-5.5) || (z<-6.8 && z>-7.2))) {
         return true;
     }
     return false;
 }
 
 const Avatar = (props) => {
-    
+
     const { forward, backward, left, right, jump, shift } = useInput();
     const [sit, setsit] = useState(false)
-    
-    const model = useGLTF(`../models/${props.avatar}.glb`)
+    const model = useGLTF(`../models/${props.avatar}.glb`);
     const { actions } = useAnimations(model.animations, model.scene);
-
-    model.scene.scale.set(1.8, 1.8,1.8)
-    model.scene.castShadow = true
-
     const currentAction = useRef("");
     const controlsRef = useRef<typeof OrbitControls>();
     const camera = useThree(state => state.camera);
+
+    model.scene.scale.set(1.8, 1.8, 1.8)
+    model.scene.castShadow = true
 
     const updateCameraTarget = (moveX: number, moveZ: number) => {
         camera.position.x += moveX;
@@ -71,11 +69,14 @@ const Avatar = (props) => {
         let action = "";
         if (forward || backward || left || right) {
             action = 'walking';
-        }else if(shift  && modelInRange(model.scene.position.x, model.scene.position.z)){
+        } else if (shift && modelInRange(model.scene.position.x, model.scene.position.z)) {
             //3.2716836427243208 -3.432373491323713
-            setsit(prev=> !prev); 
-        }else {
-            if(sit) action='sitting'
+            // x: 1.5480789765354208, y: 0, z: -5.180527537002948
+            // x: 1.7634319353058925, y: 0, z: -7.0775515734325145
+            // x: 3.205861310240996, y: 0, z: -8.750629201139832
+            setsit(prev => !prev);
+        } else {
+            if (sit) action = 'sitting'
             else action = 'idle';
         }
 
@@ -86,6 +87,10 @@ const Avatar = (props) => {
             nextActionToPlay?.reset().fadeIn(0.2).play();
             currentAction.current = action;
         }
+
+        props.getPosition(model.scene.position, action);
+        
+
     }, [forward, backward, left, right, jump, shift])
 
     useFrame((state, delta) => {
@@ -101,7 +106,7 @@ const Avatar = (props) => {
                 left,
                 right
             });
-            
+
             rotateQuaternion.setFromAxisAngle(
                 rotateAngle,
                 angleYCameraDirection + newDirectionOffset

@@ -1,16 +1,17 @@
-import { OrbitControls, useGLTF } from '@react-three/drei'
+import { OrbitControls, useAnimations, useGLTF } from '@react-three/drei'
 import dynamic from "next/dynamic"
-import { Canvas, ObjectMap } from '@react-three/fiber'
-import { RepeatWrapping, TextureLoader, Vector3 } from 'three'
+import { Canvas } from '@react-three/fiber'
+import { RepeatWrapping, TextureLoader } from 'three'
 const Avatar = dynamic(() => import("@/components/common/Avatar"))
 const MeetingRoom = dynamic(() => import("@/components/common/MeetingRoom"))
+const Person = dynamic(() => import("@/components/common/Person"))
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faCopy, faMicrophone, faMicrophoneSlash, faPhone, faVideo, faVideoSlash } from '@fortawesome/free-solid-svg-icons'
 import Peer from "simple-peer"
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/router'
 import io from 'socket.io-client'
-import {CopyToClipboard} from 'react-copy-to-clipboard';
+import { CopyToClipboard } from 'react-copy-to-clipboard';
 
 const Scene = () => {
     const texture = typeof window !== 'undefined' ? new TextureLoader().load('../images/checked_grass.jpg') : null;
@@ -30,6 +31,8 @@ const Scene = () => {
     const [position, setPosition] = useState<THREE.Vector3>()
     const [userPosition, setUserPosition] = useState<THREE.Vector3>()
     const [userAvatar, setUserAvatar] = useState('')
+    const [action, setAction] = useState('')
+    const [showAvatar, setShowAvatar] = useState(false)
     const [name, setName] = useState(myname)
     const [muteMic, setMuteMic] = useState(false)
     const [hideVideo, setHideVideo] = useState(false)
@@ -59,7 +62,21 @@ const Scene = () => {
             setName(data.name)
             setCallerSignal(data.signal)
         })
+
+        socketRef.current.on('get-avatar', data => {
+            setUserAvatar(data.avatar);
+            setUserPosition(data.pos);
+            setAction(data.action)
+        })
     }, [])
+
+    const getPosition = (pos: THREE.Vector3, action: string) => {
+        setPosition(pos);
+        if (showAvatar && !callEnded) {
+            idToCall && socketRef.current.emit('send-avatar-data', { pos, avatar, action, to: idToCall });
+            caller && socketRef.current.emit('send-avatar-data', { pos, avatar, action, to: caller })
+        }
+    }
 
     const handleVideo = () => {
         if (myVideo.current) {
@@ -106,13 +123,13 @@ const Scene = () => {
                 from: me,
                 name: name,
             })
-            socketRef.current.emit('sendAvatarData', { position: position, avatar: avatar })
         })
         peer.on("stream", (stream) => {
             userVideo.current.srcObject = stream
         })
         socketRef.current.on("callAccepted", (data) => {
             setCallAccepted(true)
+            setShowAvatar(true)
             peer.signal(data.signal)
         })
 
@@ -121,6 +138,7 @@ const Scene = () => {
 
     const answerCall = () => {
         setCallAccepted(true)
+        setShowAvatar(true)
         const peer = new Peer({
             initiator: false,
             trickle: false,
@@ -140,6 +158,7 @@ const Scene = () => {
 
     const leaveCall = () => {
         setCallEnded(true)
+        setShowAvatar(false)
         connectionRef.current.destroy()
     }
 
@@ -158,19 +177,19 @@ const Scene = () => {
                             <planeBufferGeometry args={[50, 50]} />
                             <meshStandardMaterial map={texture} />
                         </mesh>
-                        <Avatar avatar={avatar} />
+                        <Avatar avatar={avatar} getPosition={getPosition} />
+                        {showAvatar && userAvatar && userPosition && <Person pos={userPosition} av={userAvatar} action={action} />}
                     </Canvas>
                 </div>
                 <div className="client-container">
                     <div className='m-3'>
                         <span>{name}</span>
-                        <CopyToClipboard onCopy={()=> setCopy(true)} text={me}>
-                            <FontAwesomeIcon className='px-2' icon={faCopy}/>
+                        <CopyToClipboard onCopy={() => setCopy(true)} text={me}>
+                            <FontAwesomeIcon className='px-2' icon={faCopy} />
                         </CopyToClipboard>
                         {copy && <span>Copied!</span>}
                         <div className='my-2'>
                             <input type="text" onChange={(e) => setIdToCall(e.target.value)} placeholder="Id" />
-
                         </div>
                         {callAccepted && !callEnded ? (
                             <button className='bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-full' onClick={leaveCall}>
@@ -198,8 +217,8 @@ const Scene = () => {
                         <div>
                             {receivingCall && !callAccepted ? (
                                 <div>
-                                    <h1 >{name} is calling...</h1>
-                                    <button color="primary" onClick={answerCall}>
+                                    <h1 className="font-serif text-lg font-semibold	text-fuchsia-900">{name} is calling...</h1>
+                                    <button className="bg-gray-800 hover:bg-black text-white font-bold py-2 px-4 border-b-4 border-blue-700 hover:border-blue-500 rounded" onClick={answerCall}>
                                         Answer
 						        </button>
                                 </div>
