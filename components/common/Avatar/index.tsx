@@ -88,7 +88,7 @@ const Avatar = (props) => {
             currentAction.current = action;
         }
 
-        props.getPosition(model.scene.position, action);
+        props.getPosition(model.scene.position, action, rotateQuaternion);
         
 
     }, [forward, backward, left, right, jump, shift])
@@ -125,6 +125,7 @@ const Avatar = (props) => {
             model.scene.position.x += moveX;
             model.scene.position.z += moveZ;
             updateCameraTarget(moveX, moveZ);
+
         }
     })
 

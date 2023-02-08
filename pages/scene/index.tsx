@@ -1,4 +1,4 @@
-import { OrbitControls, useAnimations, useGLTF } from '@react-three/drei'
+import { OrbitControls } from '@react-three/drei'
 import dynamic from "next/dynamic"
 import { Canvas } from '@react-three/fiber'
 import { RepeatWrapping, TextureLoader } from 'three'
@@ -32,6 +32,7 @@ const Scene = () => {
     const [userPosition, setUserPosition] = useState<THREE.Vector3>()
     const [userAvatar, setUserAvatar] = useState('')
     const [action, setAction] = useState('')
+    const [rot, setRot] = useState<THREE.Quaternion>()
     const [showAvatar, setShowAvatar] = useState(false)
     const [name, setName] = useState(myname)
     const [muteMic, setMuteMic] = useState(false)
@@ -67,14 +68,15 @@ const Scene = () => {
             setUserAvatar(data.avatar);
             setUserPosition(data.pos);
             setAction(data.action)
+            setRot(data.rot)
         })
     }, [])
 
-    const getPosition = (pos: THREE.Vector3, action: string) => {
+    const getPosition = (pos: THREE.Vector3, action: string, rot: THREE.Quaternion) => {
         setPosition(pos);
         if (showAvatar && !callEnded) {
-            idToCall && socketRef.current.emit('send-avatar-data', { pos, avatar, action, to: idToCall });
-            caller && socketRef.current.emit('send-avatar-data', { pos, avatar, action, to: caller })
+            idToCall && socketRef.current.emit('send-avatar-data', { pos, avatar, action, to: idToCall, rot });
+            caller && socketRef.current.emit('send-avatar-data', { pos, avatar, action, to: caller, rot })
         }
     }
 
@@ -178,12 +180,12 @@ const Scene = () => {
                             <meshStandardMaterial map={texture} />
                         </mesh>
                         <Avatar avatar={avatar} getPosition={getPosition} />
-                        {showAvatar && userAvatar && userPosition && <Person pos={userPosition} av={userAvatar} action={action} />}
+                        {showAvatar && userAvatar && userPosition && <Person pos={userPosition} av={userAvatar} action={action} rot={rot} />}
                     </Canvas>
                 </div>
                 <div className="client-container">
                     <div className='m-3'>
-                        <span>{name}</span>
+                        <span>{myname}</span>
                         <CopyToClipboard onCopy={() => setCopy(true)} text={me}>
                             <FontAwesomeIcon className='px-2' icon={faCopy} />
                         </CopyToClipboard>
